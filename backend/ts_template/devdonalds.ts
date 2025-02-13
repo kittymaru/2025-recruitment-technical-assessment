@@ -69,7 +69,7 @@ const parse_handwriting = (recipeName: string): string | null => {
     }
   }
 
-  if (newName.length <= 0) {
+  if (check_string(newName) === false) {
     return null;
   }
 
@@ -94,10 +94,23 @@ const parse_handwriting = (recipeName: string): string | null => {
     }
   }
 
+  if (check_string(newNameSecond) === false) {
+    return null;
+  }
+
   // Remove trailing whitespace
   newNameSecond.trimEnd();
 
   return newNameSecond;
+}
+
+// Helper function to check if resultant string becomes invalid
+function check_string(input: string): boolean {
+  if (input.length <= 0) {
+    return false;
+  }
+
+  return true;
 }
 
 // [TASK 2] ====================================================================
