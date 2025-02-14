@@ -1,3 +1,4 @@
+import { create } from 'domain';
 import express, { Request, Response } from 'express';
 
 // ==== Type Definitions, feel free to add or modify ==========================
@@ -17,6 +18,12 @@ interface recipe extends cookbookEntry {
 
 interface ingredient extends cookbookEntry {
   cookTime: number;
+}
+
+interface entrySummary {
+  name: string;
+  cookTime: number;
+  ingredients: requiredItem[];
 }
 
 // =============================================================================
@@ -117,15 +124,14 @@ function check_string(input: string): boolean {
 // Endpoint that adds a CookbookEntry to your magical cookbook
 app.post("/entry", (req:Request, res:Response) => {
   try {
-    res.json(store_entry(req.body));
+    res.json(storeEntry(req.body));
   } catch (error) {
     res.status(400).json({});
   }
-
 });
 
 // Stores cookbook entries
-const store_entry = (entry: ingredient | recipe): {} => {
+const storeEntry = (entry: ingredient | recipe): {} => {
   // Type is not recipe or ingredient
   if (entry.type !== "recipe" && entry.type !== "ingredient") {
     throw new Error();
@@ -173,10 +179,69 @@ const store_entry = (entry: ingredient | recipe): {} => {
 // [TASK 3] ====================================================================
 // Endpoint that returns a summary of a recipe that corresponds to a query name
 app.get("/summary", (req:Request, res:Response) => {
-  // TODO: implement me
-  res.status(500).send("not yet implemented!")
-
+  try {
+    res.json(createSummary(req.query.recipeName as string));
+  } catch (error) {
+    res.status(400).json({});
+  }
 });
+
+const createSummary = (recipeName: string): entrySummary => {
+  // recipeName cannot be found
+  const currentRecipe: cookbookEntry = cookbook.find((target: cookbookEntry) => target.name === recipeName);
+
+  if (currentRecipe === undefined) {
+    throw new Error();
+  }
+
+  // recipeName is an ingredient
+  if (currentRecipe.type === "ingredient") {
+    throw new Error();
+  }
+
+  const currentRecipeValid = currentRecipe as recipe;
+
+  let summary: entrySummary = {
+    name: recipeName,
+    cookTime: 0,
+    ingredients: []
+  }
+
+  recursion(summary, currentRecipeValid);
+
+  return summary;
+}
+
+function recursion(summary: entrySummary, currentRecipe: recipe): entrySummary {
+  for (const curr of currentRecipe.requiredItems) {
+    const entry = cookbook.find((currEntry: cookbookEntry) => currEntry.name === curr.name);
+    if (!entry) {
+      throw new Error();
+    }
+
+    if (entry.type === "ingredient") {
+      const entryIngredient = entry as ingredient;
+      summary.cookTime = summary.cookTime + entryIngredient.cookTime;
+
+      const existingIngredient = summary.ingredients.findIndex((ingredient: requiredItem) => ingredient.name === curr.name);
+      if (existingIngredient) {
+        summary.ingredients[existingIngredient].quantity++;
+      } else {
+        summary.ingredients.push(
+          {
+            name: curr.name,
+            quantity: 1
+          }
+        )
+      }
+    } else {
+      const entryRecipe = entry as recipe;
+      recursion(summary, entryRecipe);
+    }
+  }
+
+  return summary;
+}
 
 // =============================================================================
 // ==== DO NOT TOUCH ===========================================================
