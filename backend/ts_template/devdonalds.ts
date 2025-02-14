@@ -26,7 +26,8 @@ const app = express();
 app.use(express.json());
 
 // Store your recipes here!
-const cookbook: any = null;
+//const cookbook: any = null;
+const cookbook: cookbookEntry[] = [];
 
 // Task 1 helper (don't touch)
 app.post("/parse", (req:Request, res:Response) => {
@@ -45,7 +46,6 @@ app.post("/parse", (req:Request, res:Response) => {
 // [TASK 1] ====================================================================
 // Takes in a recipeName and returns it in a form that 
 const parse_handwriting = (recipeName: string): string | null => {
-
   // Check that input does not have length of > 0 characters
   if (recipeName.length <= 0) {
     return null;
@@ -73,7 +73,7 @@ const parse_handwriting = (recipeName: string): string | null => {
     return null;
   }
 
-  // Second iteration: remove extra spaces
+  // Second iteration: remove extra spaces, capitalise words
   let newNameSecond: string = "";
   let isWord: boolean = false;
 
@@ -116,10 +116,59 @@ function check_string(input: string): boolean {
 // [TASK 2] ====================================================================
 // Endpoint that adds a CookbookEntry to your magical cookbook
 app.post("/entry", (req:Request, res:Response) => {
-  // TODO: implement me
-  res.status(500).send("not yet implemented!")
+  try {
+    res.json(store_entry(req.body));
+  } catch (error) {
+    res.status(400).json({});
+  }
 
 });
+
+// Stores cookbook entries
+const store_entry = (entry: ingredient | recipe): {} => {
+  // Type is not recipe or ingredient
+  if (entry.type !== "recipe" && entry.type !== "ingredient") {
+    throw new Error();
+  }
+
+  // Existing entry names not unique
+  if (cookbook.find((existingEntry: cookbookEntry) => existingEntry.name === entry.name) !== undefined) {
+    console.log("yes");
+    throw new Error();
+  }
+
+  // cookTime <= 0
+  if (entry.type === "ingredient") {
+    const ingredientEntry = entry as ingredient;
+    
+    if (ingredientEntry.cookTime <= 0) {
+      throw new Error();
+    }
+  }
+
+  // requiredItems not unique
+  if (entry.type === "recipe") {
+    const recipeEntry = entry as recipe;
+
+    for (let i: number = 0; i < recipeEntry.requiredItems.length; i++) {
+      let counter: number = 0;
+
+      for (let j: number = 0; j < recipeEntry.requiredItems.length; j++) {
+        if (recipeEntry.requiredItems[j].name === recipeEntry.requiredItems[i].name) {
+          counter++;
+        }
+
+        if (counter > 1) {
+          throw new Error();
+        }
+      }
+    }
+  }
+
+  cookbook.push(entry);
+
+  return {};
+}
 
 // [TASK 3] ====================================================================
 // Endpoint that returns a summary of a recipe that corresponds to a query name
