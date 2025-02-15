@@ -33,7 +33,6 @@ const app = express();
 app.use(express.json());
 
 // Store your recipes here!
-//const cookbook: any = null;
 const cookbook: cookbookEntry[] = [];
 
 // Task 1 helper (don't touch)
@@ -62,12 +61,16 @@ const parse_handwriting = (recipeName: string): string | null => {
   recipeName.trimEnd();
   recipeName.trimStart();
 
-  // Initialise array for modified name
+  // Initialise new string
   let newName: string = "";
 
   // First iteration: remove all hyphens, underscores and invalid characters
   for (let i: number = 0; i < recipeName.length; i++) {
-    if (recipeName[i] === "-" || recipeName[i] === "_" || recipeName[i] === " ") {
+    if (
+      recipeName[i] === "-" || 
+      recipeName[i] === "_" || 
+      recipeName[i] === " "
+    ) {
       // Replace with space
       newName = newName + " ";
     } else if (/^[a-zA-Z]$/.test(recipeName[i]) == true) {
@@ -76,6 +79,7 @@ const parse_handwriting = (recipeName: string): string | null => {
     }
   }
 
+  // If no characters remaining, return null
   if (check_string(newName) === false) {
     return null;
   }
@@ -101,12 +105,18 @@ const parse_handwriting = (recipeName: string): string | null => {
     }
   }
 
+  // If no characters remaining, return null
   if (check_string(newNameSecond) === false) {
     return null;
   }
 
   // Remove trailing whitespace
   newNameSecond.trimEnd();
+
+  // If no characters remaining, return null
+  if (check_string(newNameSecond) === false) {
+    return null;
+  }
 
   return newNameSecond;
 }
@@ -138,8 +148,11 @@ const storeEntry = (entry: ingredient | recipe): {} => {
   }
 
   // Existing entry names not unique
-  if (cookbook.find((existingEntry: cookbookEntry) => existingEntry.name === entry.name) !== undefined) {
-    console.log("yes");
+  if (
+    cookbook.find(
+      (existingEntry: cookbookEntry) => existingEntry.name === entry.name
+    ) !== undefined
+  ) {
     throw new Error();
   }
 
@@ -150,6 +163,10 @@ const storeEntry = (entry: ingredient | recipe): {} => {
     if (ingredientEntry.cookTime <= 0) {
       throw new Error();
     }
+
+    cookbook.push(entry);
+
+    return {};
   }
 
   // requiredItems not unique
@@ -187,9 +204,11 @@ app.get("/summary", (req:Request, res:Response) => {
 });
 
 const createSummary = (recipeName: string): entrySummary => {
-  // recipeName cannot be found
-  const currentRecipe: cookbookEntry = cookbook.find((target: cookbookEntry) => target.name === recipeName);
+  const currentRecipe: cookbookEntry = cookbook.find(
+    (target: cookbookEntry) => target.name === recipeName
+  );
 
+  // recipeName cannot be found
   if (currentRecipe === undefined) {
     throw new Error();
   }
@@ -207,14 +226,18 @@ const createSummary = (recipeName: string): entrySummary => {
     ingredients: []
   }
 
-  recursion(summary, currentRecipeValid);
+  summary = recursion(summary, currentRecipeValid);
 
   return summary;
 }
 
 function recursion(summary: entrySummary, currentRecipe: recipe): entrySummary {
   for (const curr of currentRecipe.requiredItems) {
-    const entry = cookbook.find((currEntry: cookbookEntry) => currEntry.name === curr.name);
+    // Find valid entry in cookbook 
+    const entry = cookbook.find(
+      (currEntry: cookbookEntry) => currEntry.name === curr.name
+    );
+
     if (!entry) {
       throw new Error();
     }
@@ -223,10 +246,15 @@ function recursion(summary: entrySummary, currentRecipe: recipe): entrySummary {
       const entryIngredient = entry as ingredient;
       summary.cookTime = summary.cookTime + entryIngredient.cookTime;
 
-      const existingIngredient = summary.ingredients.findIndex((ingredient: requiredItem) => ingredient.name === curr.name);
+      const existingIngredient = summary.ingredients.findIndex(
+        (ingredient: requiredItem) => ingredient.name === curr.name
+      );
+
       if (existingIngredient) {
+        // If ingredient exists in summary, increase quantity
         summary.ingredients[existingIngredient].quantity++;
       } else {
+        // Add new ingredient
         summary.ingredients.push(
           {
             name: curr.name,
